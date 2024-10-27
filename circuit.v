@@ -5,6 +5,6 @@ module circuit1(
     output F
 );
     wire w1;
-    and (w1, B, C); // w1 = B AND C
-    or (F, A, w1);  // F = A OR w1
+    and (w1, B, C); 
+    or (F, A, w1);  
 endmodule

@@ -3,7 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include <queue>;
+#include <queue>
 
 using namespace std;
 
@@ -45,6 +45,11 @@ struct Circuit {
     vector<Gate> gates;
     priority_queue<Event> event_queue;
 
+    void ProcessEvent(){
+        UpdateInput();
+        UpdateOutputs();
+        event_queue.pop();
+    }
 
     void FillEventQueue(const string& filename) {
         ifstream file(filename);
@@ -80,7 +85,7 @@ struct Circuit {
 
     // Method to process events in the queue (example)
     void UpdateInput() {
-        if(!event_queue.empty()) cout<<"there are no events.";
+        if(!event_queue.empty()) cout<<"there are no events."<<endl;
         else if(event_queue.top().timestamp == 0)
         while (event_queue.top().timestamp == 0) {
             Event current_event = event_queue.top();
@@ -89,7 +94,6 @@ struct Circuit {
                 if(input.name == current_input.name) input.state = current_input.state;
             }
             
-            event_queue.pop();
 
             // Process the event (for now, just print it)
             cout << "Timestamp: " << current_event.timestamp
@@ -103,7 +107,6 @@ struct Circuit {
                 if(input.name == current_input.name) input.state = current_input.state;
             }
             
-            event_queue.pop();
 
             // Process the event (for now, just print it)
             cout << "Timestamp: " << current_event.timestamp
@@ -112,13 +115,67 @@ struct Circuit {
         }
         }
 
-    void ReadGate(){
+    // void ReadGate(){
 
+    // }
+
+    void UpdateOutputs() {
+        for (auto& gate : gates) {
+            int result;
+
+            // Determine the operation based on the gate type
+            if (gate.type == "and") {
+                result = 1;  // AND gate starts with true (1)
+                for (const auto& input : gate.inputs) {
+                    result &= input.state;
+                }
+            } else if (gate.type == "or") {
+                result = 0;  // OR gate starts with false (0)
+                for (const auto& input : gate.inputs) {
+                    result |= input.state;
+                }
+            } else if (gate.type == "not") {
+                // NOT gate has only one input
+                result = !gate.inputs[0].state;
+            } else if (gate.type == "xor") {
+                result = gate.inputs[0].state ^ gate.inputs[1].state;
+            } else if (gate.type == "nand") {
+                result = 1;  // NAND starts as true (1)
+                for (const auto& input : gate.inputs) {
+                    result &= input.state;
+                }
+                result = !result;  // NAND inverts the result
+            } else if (gate.type == "nor") {
+                result = 0;  // NOR starts as false (0)
+                for (const auto& input : gate.inputs) {
+                    result |= input.state;
+                }
+                result = !result;  // NOR inverts the result
+            } else if (gate.type == "xnor") {
+                result = !(gate.inputs[0].state ^ gate.inputs[1].state);
+            } else if (gate.type == "buf") {
+                // BUF (buffer) just passes the input value to output
+                result = gate.inputs[0].state;
+            } else {
+                cerr << "Unknown gate type: " << gate.type << endl;
+                return;
+            }
+
+            // Update the output state
+            gate.output.state = result;
+
+            // Print the gate operation result
+            cout << "Gate: " << gate.type << ", Output: " << gate.output.name << ", New State: " << result << endl;
+
+            // Update the corresponding output state
+            for (auto& output : outputs) {
+                if (output.name == gate.output.name) {
+                    output.state = gate.output.state;
+                }
+            }
+        }
     }
 
-    void UpdateOutputs(){
-
-    }
     void parseVerilogFile(const string& filename) {
     
     ifstream file(filename);
@@ -193,6 +250,10 @@ int main() {
         for (const auto& input : gate.inputs) cout << input.name << " ";
         cout << ")\n";
     }
+
+    circuit.FillEventQueue("stimulicircuit1.stim");
+    circuit.ProcessEvent();
+    circuit.ProcessEvent();
 
     return 0;
 }
