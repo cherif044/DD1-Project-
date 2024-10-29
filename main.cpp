@@ -7,6 +7,7 @@
 
 using namespace std;
 
+//-------------------------------------------------------------------- input/output struct type --------------------------------------------------------------------------
 struct ioput{
     string name;
     int state;
@@ -20,13 +21,14 @@ struct ioput{
     }
 };
 
+
 struct Gate {
     string type="";
     ioput output;
     vector<ioput> inputs;
 };
 
-
+//-------------------------------------------------------------------- Event struct type -----------------------------------------------------------------------------------------
 struct Event {
     long long timestamp; // In picostates
     ioput input;
@@ -35,8 +37,11 @@ struct Event {
     bool operator<(const Event& other) const {
         return timestamp > other.timestamp;  // Min-heap: smaller timestamp has higher priority
     }
-};
+    //constructor
+    Event(ioput n, int timestamp): input(n), timestamp(timestamp){}
 
+};
+//------------------------------------------------------------------ Circuit generated from verilog ------------------------------------------------------------------------------------
 
 struct Circuit {
     vector<ioput> inputs;
@@ -45,12 +50,7 @@ struct Circuit {
     vector<Gate> gates;
     priority_queue<Event> event_queue;
 
-    void ProcessEvent(){
-        UpdateInput();
-        UpdateOutputs();
-        event_queue.pop();
-    }
-
+//------------------------------------------ Queue of inputs to update (events) ------------------------------------------------------------------------------------ 
     void FillEventQueue(const string& filename) {
         ifstream file(filename);
         if (!file.is_open()) {
@@ -71,58 +71,57 @@ struct Circuit {
 
             // Parse the line in the format: #<timestamp> <input>=<value>;
             iss >> hash >> timestamp >> input >> equals >> logic_value;
+            cout<<input<<"\t"<<logic_value<<endl;
             if (input.back() == ';') input.pop_back();  // Remove the trailing semicolon
 
             // Create a new event
-            Event new_event{timestamp, ioput(input,logic_value)};
+            Event new_event(ioput(input,logic_value), timestamp);
 
             // Add the event to the priority queue
-            event_queue.push(new_event);
+            event_queue.push(new_event); 
         }
 
         file.close();
     }
 
-    // Method to process events in the queue (example)
+    ///------------------------------------------  Method to update the inputs according to the events ---------------------------------------------------------------
     void UpdateInput() {
-        if(!event_queue.empty()) cout<<"there are no events."<<endl;
-        else if(event_queue.top().timestamp == 0)
+        if(event_queue.empty()) {cout<<"there are no events."<<endl; return;}
+
+        else if(event_queue.top().timestamp == 0){ //get rid of the inputs at timestamp = 0
         while (event_queue.top().timestamp == 0) {
             Event current_event = event_queue.top();
             ioput current_input = current_event.input;
             for(auto input: inputs){
                 if(input.name == current_input.name) input.state = current_input.state;
             }
-            
-
-            // Process the event (for now, just print it)
             cout << "Timestamp: " << current_event.timestamp
                  << ", Input: " << current_event.input.name
                  << ", New Value: " << current_event.input.state << endl;
+                 event_queue.pop();
+        }
         }
         else{
+            cout<<"entered the else"<<endl;
             Event current_event = event_queue.top();
             ioput current_input = current_event.input;
-            for(auto input: inputs){
-                if(input.name == current_input.name) input.state = current_input.state;
-            }
-            
-
-            // Process the event (for now, just print it)
-            cout << "Timestamp: " << current_event.timestamp
+            for(auto input: inputs){ //look for the corresponding input
+            // cout<<"name:"<<input.name<<", name:"<<current_input.name<<endl;
+                if(input.name == (current_input.name+",")) {
+                // cout<<<<""<<current_input.name()
+                input.state = current_input.state; //input updated
+                cout << "Timestamp: " << current_event.timestamp
                  << ", Input: " << current_event.input.name
                  << ", New Value: " << current_event.input.state << endl;
+                 WriteSimulationResults("simulation.sim", input, current_event.timestamp);}
+
+            }
         }
         }
-
-    // void ReadGate(){
-
-    // }
-
+    ///------------------------------------------  Method to output outputs
     void UpdateOutputs() {
         for (auto& gate : gates) {
             int result;
-
             // Determine the operation based on the gate type
             if (gate.type == "and") {
                 result = 1;  // AND gate starts with true (1)
@@ -162,20 +161,22 @@ struct Circuit {
             }
 
             // Update the output state
+            if(gate.output.state == result){
             gate.output.state = result;
 
             // Print the gate operation result
             cout << "Gate: " << gate.type << ", Output: " << gate.output.name << ", New State: " << result << endl;
-
-            // Update the corresponding output state
-            for (auto& output : outputs) {
-                if (output.name == gate.output.name) {
-                    output.state = gate.output.state;
-                }
+            WriteSimulationResults("simulation.sim", gate.output, event_queue.top().timestamp + 50 );
+            // // Update the corresponding output state
+            // for (auto& output : outputs) {
+            //     if (output.name == gate.output.name) {
+            //         output.state = gate.output.state;
+            //     }}
             }
         }
     }
-
+    
+    ///------------------------------------------  Method to read verilog file 
     void parseVerilogFile(const string& filename) {
     
     ifstream file(filename);
@@ -224,11 +225,30 @@ struct Circuit {
         }
     }
     }
+    
+    ///------------------------------------------  Method to update input, then output(s), then pop event
+
+    void ProcessEvent(){
+        while(!event_queue.empty()){
+        UpdateInput();
+        UpdateOutputs();
+        event_queue.pop();
+        }
+    }
+
+///------------------------------------------ method to write simulation result
+    void WriteSimulationResults(const string& filename, ioput updated_ioput, int ts) {
+        ofstream simFile(filename);
+        if (!simFile.is_open()) {
+            cerr << "Error opening file: " << filename << endl;
+            return;
+        }
+
+        simFile << ts << ", " << updated_ioput.name << ", " << updated_ioput.state << "\n";
+        simFile.close();
+    }
+
 };
-
-// void ReadStim(const string& filename){
-
-//   }
 
 
 
@@ -252,7 +272,6 @@ int main() {
     }
 
     circuit.FillEventQueue("stimulicircuit1.stim");
-    circuit.ProcessEvent();
     circuit.ProcessEvent();
 
     return 0;
