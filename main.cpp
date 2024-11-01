@@ -7,50 +7,50 @@
 
 using namespace std;
 
-//-------------------------------------------------------------------- input/output struct type --------------------------------------------------------------------------
-struct ioput{
+//-------------------------------------------------------------------- input/output struct type 
+struct ioput {
     string name;
     int state;
-    ioput(string s, int i){
-        name =s;
-        state =i;
+    ioput(string s, int i) {
+        name = s;
+        state = i;
     }
-    ioput(){
+    ioput() {
         name = "";
         state = -1;
     }
 };
 
-
 struct Gate {
-    string type="";
+    string type = "";
     ioput output;
     vector<ioput> inputs;
 };
 
-//-------------------------------------------------------------------- Event struct type -----------------------------------------------------------------------------------------
+//-------------------------------------------------------------------- Event struct type 
 struct Event {
     long long timestamp; // In picostates
     ioput input;
 
-    // Comparator to order events by timestamp (smallest name)
-    bool operator<(const Event& other) const {
-        return timestamp > other.timestamp;  // Min-heap: smaller timestamp has higher priority
+    // Comparator to order events by timestamp (min-heap)
+    bool operator>(const Event& other) const {
+        return timestamp > other.timestamp; // Min-heap: smaller timestamp has higher priority
     }
-    //constructor
-    Event(ioput n, int timestamp): input(n), timestamp(timestamp){}
 
+    // Constructor
+    Event(ioput n, long long timestamp) : input(n), timestamp(timestamp) {}
 };
-//------------------------------------------------------------------ Circuit generated from verilog ------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------ Circuit generated from verilog 
 struct Circuit {
     vector<ioput> inputs;
     vector<ioput> outputs;
     vector<ioput> wires;
     vector<Gate> gates;
-    priority_queue<Event> event_queue;
+    priority_queue<Event, vector<Event>, greater<Event>> event_queue; // Use min-heap
+    long long last_event_timestamp; // Store the last event timestamp
 
-//------------------------------------------ Queue of inputs to update (events) ------------------------------------------------------------------------------------ 
+//------------------------------------------ Queue of inputs to update (events) --
     void FillEventQueue(const string& filename) {
         ifstream file(filename);
         if (!file.is_open()) {
@@ -71,14 +71,13 @@ struct Circuit {
 
             // Parse the line in the format: #<timestamp> <input>=<value>;
             iss >> hash >> timestamp >> input >> equals >> logic_value;
-            cout<<input<<"\t"<<logic_value<<endl;
             if (input.back() == ';') input.pop_back();  // Remove the trailing semicolon
 
             // Create a new event
-            Event new_event(ioput(input,logic_value), timestamp);
+            Event new_event(ioput(input, logic_value), timestamp);
 
             // Add the event to the priority queue
-            event_queue.push(new_event); 
+            event_queue.push(new_event);
         }
 
         file.close();
@@ -86,38 +85,53 @@ struct Circuit {
 
     ///------------------------------------------  Method to update the inputs according to the events ---------------------------------------------------------------
     void UpdateInput() {
-        if(event_queue.empty()) {cout<<"there are no events."<<endl; return;}
+        if (event_queue.empty()) {
+            cout << "There are no events." << endl;
+            return;
+        }
 
-        else if(event_queue.top().timestamp == 0){ //get rid of the inputs at timestamp = 0
-        while (event_queue.top().timestamp == 0) {
-            Event current_event = event_queue.top();
+        // Get the top event
+        Event current_event = event_queue.top();
+
+        // Check if the event has timestamp 0
+        while (!event_queue.empty() && current_event.timestamp == 0) {
+            event_queue.pop(); // Remove the processed event
+            
+            // Update corresponding inputs
             ioput current_input = current_event.input;
-            for(auto input: inputs){
-                if(input.name == current_input.name) input.state = current_input.state;
+            for (auto& input : inputs) {
+                if (input.name == current_input.name) {
+                    input.state = current_input.state;
+                }
             }
             cout << "Timestamp: " << current_event.timestamp
                  << ", Input: " << current_event.input.name
                  << ", New Value: " << current_event.input.state << endl;
-                 event_queue.pop();
-        }
-        }
-        else{
-            cout<<"entered the else"<<endl;
-            Event current_event = event_queue.top();
-            ioput current_input = current_event.input;
-            for(auto input: inputs){ //look for the corresponding input
-            // cout<<"name:"<<input.name<<", name:"<<current_input.name<<endl;
-                if(input.name == (current_input.name+",")) {
-                // cout<<<<""<<current_input.name()
-                input.state = current_input.state; //input updated
-                cout << "Timestamp: " << current_event.timestamp
-                 << ", Input: " << current_event.input.name
-                 << ", New Value: " << current_event.input.state << endl;
-                 WriteSimulationResults("simulation.sim", input, current_event.timestamp);}
 
+            if (!event_queue.empty()) {
+                current_event = event_queue.top(); // Get the next event
             }
         }
+
+        // Process the next event if it's not zero
+        if (!event_queue.empty()) {
+            current_event = event_queue.top(); // Get the next event
+            last_event_timestamp = current_event.timestamp; // Store the last event timestamp
+           // event_queue.pop(); // Remove the processed event
+
+            ioput current_input = current_event.input;
+            for (auto& input : inputs) { // Look for the corresponding input
+                if (input.name == (current_input.name + ",")) {
+                    input.state = current_input.state; // Input updated
+                    cout << "Timestamp: " << current_event.timestamp
+                         << ", Input: " << current_event.input.name
+                         << ", New Value: " << current_event.input.state << endl;
+                    WriteSimulationResults("simulation.sim", input, current_event.timestamp);
+                }
+            }
         }
+    }
+
     ///------------------------------------------  Method to output outputs
     void UpdateOutputs() {
         for (auto& gate : gates) {
@@ -160,98 +174,87 @@ struct Circuit {
                 return;
             }
 
-            // Update the output state
-            if(gate.output.state == result){
-            gate.output.state = result;
+            // Update the output state if it has changed
+            if (gate.output.state != result) {
+                gate.output.state = result;
 
-            // Print the gate operation result
-            cout << "Gate: " << gate.type << ", Output: " << gate.output.name << ", New State: " << result << endl;
-            WriteSimulationResults("simulation.sim", gate.output, event_queue.top().timestamp + 50 );
-            // // Update the corresponding output state
-            // for (auto& output : outputs) {
-            //     if (output.name == gate.output.name) {
-            //         output.state = gate.output.state;
-            //     }}
+                // Print the gate operation result
+                cout << "Gate: " << gate.type << ", Output: " << gate.output.name << ", New State: " << result << endl;
+                WriteSimulationResults("simulation.sim", gate.output, last_event_timestamp + 50); // Use last_event_timestamp
             }
         }
     }
-    
+
     ///------------------------------------------  Method to read verilog file 
     void parseVerilogFile(const string& filename) {
-    
-    ifstream file(filename);
-    string line;
+        ifstream file(filename);
+        string line;
 
-    while (getline(file, line)) {
-        istringstream iss(line);
-        string word;
+        while (getline(file, line)) {
+            istringstream iss(line);
+            string word;
 
-        iss >> word;
-        if (word == "input") {
-            // Parse inputs
-            string input;
-            while (iss >> input) {
-                if (input.back() == ';') input.pop_back();  // Remove trailing semicolon
-                inputs.push_back(ioput(input,0));
+            iss >> word;
+            if (word == "input") {
+                // Parse inputs
+                string input;
+                while (iss >> input) {
+                    if (input.back() == ';') input.pop_back();  // Remove trailing semicolon
+                    inputs.push_back(ioput(input, 0));
+                }
+            } else if (word == "output") {
+                // Parse outputs
+                string output;
+                while (iss >> output) {
+                    if (output.back() == ';') output.pop_back();  // Remove trailing semicolon
+                    outputs.push_back(ioput(output, 0));
+                }
+            } else if (word == "wire") {
+                // Parse wires
+                string wire;
+                while (iss >> wire) {
+                    if (wire.back() == ';') wire.pop_back();  // Remove trailing semicolon
+                    wires.push_back(ioput(wire, 0));
+                }
+            } else if (word == "and" || word == "or" || word == "not" || word == "xor" ||
+                       word == "nand" || word == "nor" || word == "xnor" || word == "buf") {
+                // Parse gates
+                Gate gate;
+                gate.type = word;
+                string output, input;
+                iss >> output;
+                if (output.back() == ',') output.pop_back();  // Remove trailing comma
+                gate.output.name = output;
+                while (iss >> input) {
+                    if (input.back() == ',' || input.back() == ';') input.pop_back();  // Remove trailing comma or semicolon
+                    gate.inputs.push_back(ioput(input, 0));
+                }
+                gates.push_back(gate);
             }
-        } else if (word == "output") {
-            // Parse outputs
-            string output;
-            while (iss >> output) {
-                if (output.back() == ';') output.pop_back();  // Remove trailing semicolon
-                outputs.push_back(ioput(output,0));
-            }
-        } else if (word == "wire") {
-            // Parse wires
-            string wire;
-            while (iss >> wire) {
-                if (wire.back() == ';') wire.pop_back();  // Remove trailing semicolon
-                wires.push_back(ioput(wire,0));
-            }
-        } else if (word == "and" || word == "or" || word == "not" || word == "xor" ||
-                   word == "nand" || word == "nor" || word == "xnor" || word == "buf") {
-            // Parse gates
-            Gate gate;
-            gate.type = word;
-            string output, input;
-            iss >> output;
-            if (output.back() == ',') output.pop_back();  // Remove trailing comma
-            gate.output.name = output;
-            while (iss >> input) {
-                if (input.back() == ',' || input.back() == ';') input.pop_back();  // Remove trailing comma or semicolon
-                gate.inputs.push_back(ioput(input,0));
-            }
-            gates.push_back(gate);
         }
     }
-    }
-    
+
     ///------------------------------------------  Method to update input, then output(s), then pop event
-
-    void ProcessEvent(){
-        while(!event_queue.empty()){
-        UpdateInput();
-        UpdateOutputs();
-        event_queue.pop();
+    void ProcessEvent() {
+        while (!event_queue.empty()) {
+            UpdateInput();
+           // UpdateOutputs();
+            event_queue.pop();
         }
     }
 
-///------------------------------------------ method to write simulation result
-    void WriteSimulationResults(const string& filename, ioput updated_ioput, int ts) {
-        ofstream simFile(filename);
+    ///------------------------------------------ method to write simulation result
+    void WriteSimulationResults(const string& filename, ioput updated_ioput, long long ts) {
+        ofstream simFile(filename, ios::app);
         if (!simFile.is_open()) {
             cerr << "Error opening file: " << filename << endl;
             return;
         }
 
-        simFile << ts << ", " << updated_ioput.name << ", " << updated_ioput.state << "\n";
+        simFile << ts << ", " << updated_ioput.name << " " << updated_ioput.state << "\n";
         simFile.close();
     }
-
 };
-
-
-
 
 int main() {
     Circuit circuit;
@@ -272,7 +275,7 @@ int main() {
     }
 
     circuit.FillEventQueue("stimulicircuit1.stim");
-    circuit.ProcessEvent();
+   circuit.ProcessEvent(); 
 
     return 0;
 }
