@@ -117,7 +117,6 @@ struct Circuit {
         if (!event_queue.empty()) {
             current_event = event_queue.top(); // Get the next event
             last_event_timestamp = current_event.timestamp; // Store the last event timestamp
-           // event_queue.pop(); // Remove the processed event
 
             ioput current_input = current_event.input;
             for (auto& input : inputs) { // Look for the corresponding input
@@ -238,7 +237,7 @@ struct Circuit {
     void ProcessEvent() {
         while (!event_queue.empty()) {
             UpdateInput();
-           // UpdateOutputs();
+           UpdateOutputs();
             event_queue.pop();
         }
     }
