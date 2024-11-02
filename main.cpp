@@ -4,6 +4,14 @@
 #include <vector>
 #include <string>
 #include <queue>
+void removeCharacter(std::string& str, char ch) {
+    size_t pos = str.find(ch);
+    while (pos != std::string::npos) {
+        str.erase(pos, 1); // Remove the character at the found position
+        pos = str.find(ch); // Look for the next occurrence of the character
+    }
+}
+
 
 using namespace std;
 struct Gate;
@@ -11,11 +19,11 @@ struct Gate;
 struct ioput {
     string name;
     int state;
-    Gate * connected;
+    Gate* connected;
     ioput(string s, int i) {
         name = s;
         state = i;
-       
+
     }
     ioput() {
         name = "";
@@ -23,7 +31,7 @@ struct ioput {
     }
 };
 
- struct Gate {
+struct Gate {
     string type = "";
     ioput output;
     vector<ioput> inputs;
@@ -86,70 +94,269 @@ struct Circuit {
         file.close();
     }
 
-    bool assignGateInputsAndGenerateOutput(Gate* gate) {
+    void assignGateInputsAndGenerateOutput(Gate* gate) {
         int oldoutput = gate->output.state;
+        // cout << "accessing: " << gate->type;
 
-        // Generate output based on the gate type
+         // Generate output based on the gate type
         if (gate->type == "and") {
             gate->output.state = 1; // Start assuming true
             for (const auto& input : gate->inputs) {
                 if (input.state == 0) { // If any input is false
                     gate->output.state = 0;
-                    break;
+
+
+                }
+            }
+
+            if (oldoutput != gate->output.state && oldoutput !=-1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
                 }
             }
         }
-        else if (gate->type == "or") {
+        else if (gate->type == "or")
+        {
             gate->output.state = 0; // Start assuming false
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) { // If any input is true
                     gate->output.state = 1;
-                    break;
+
+
+                }
+            }
+            if (oldoutput != gate->output.state && oldoutput != -1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
                 }
             }
         }
-        else if (gate->type == "not") {
+        else if (gate->type == "not")
+        {
             if (gate->inputs.size() == 1) {
                 gate->output.state = !gate->inputs[0].state; // Invert the single input
+                for (auto gat : gates)
+                {
+                    for (auto input : gat.inputs)
+                    {
+                        if (input.name == gate->output.name)
+                        {
+                            input.state = gate->output.state;
+
+                        }
+                    }
+                }
             }
             else {
                 cerr << "NOT gate should have exactly one input." << endl;
             }
+            if (oldoutput != gate->output.state && oldoutput != -1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
+                }
+            }
         }
-        else if (gate->type == "nand") {
+        else if (gate->type == "nand")
+        {
             gate->output.state = 1; // Start assuming true
             for (const auto& input : gate->inputs) {
                 if (input.state == 0) {
                     gate->output.state = 1;
+                    for (auto gat : gates)
+                    {
+                        for (auto input : gat.inputs)
+                        {
+                            if (input.name == gate->output.name)
+                            {
+                                input.state = gate->output.state;
+                                assignGateInputsAndGenerateOutput(&gat);
+                            }
+                        }
+                    }
                     break;
                 }
                 gate->output.state = 0; // If all inputs are true, output is false
+                for (auto gat : gates)
+                {
+                    for (auto input : gat.inputs)
+                    {
+                        if (input.name == gate->output.name)
+                        {
+                            input.state = gate->output.state;
+                            assignGateInputsAndGenerateOutput(&gat);
+                        }
+                    }
+                }
+            }
+            if (oldoutput != gate->output.state && oldoutput != -1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
+                }
             }
         }
-        else if (gate->type == "nor") {
+        else if (gate->type == "nor")
+        {
             gate->output.state = 0;
+            for (auto gat : gates)
+            {
+                for (auto input : gat.inputs)
+                {
+                    if (input.name == gate->output.name)
+                    {
+                        input.state = gate->output.state;
+                        assignGateInputsAndGenerateOutput(&gat);
+                    }
+                }
+            }
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) {
                     gate->output.state = 0;
+                    for (auto gat : gates)
+                    {
+                        for (auto input : gat.inputs)
+                        {
+                            if (input.name == gate->output.name)
+                            {
+                                input.state = gate->output.state;
+                                assignGateInputsAndGenerateOutput(&gat);
+                            }
+                        }
+                    }
                     break;
                 }
                 gate->output.state = 1; // If all inputs are false, output is true
+                for (auto gat : gates)
+                {
+                    for (auto input : gat.inputs)
+                    {
+                        if (input.name == gate->output.name)
+                        {
+                            input.state = gate->output.state;
+                            assignGateInputsAndGenerateOutput(&gat);
+                        }
+                    }
+                }
+            }
+            if (oldoutput != gate->output.state && oldoutput != -1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
+                }
             }
         }
-        else if (gate->type == "xor") {
+        else if (gate->type == "xor")
+        {
             int trueCount = 0;
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) trueCount++;
             }
             gate->output.state = (trueCount % 2 == 1) ? 1 : 0; // True if an odd number of inputs are true
+            for (auto gat : gates)
+            {
+                for (auto input : gat.inputs)
+                {
+                    if (input.name == gate->output.name)
+                    {
+                        input.state = gate->output.state;
+                        assignGateInputsAndGenerateOutput(&gat);
+                    }
+                }
+            }
+            if (oldoutput != gate->output.state && oldoutput!=-1)
+            {
+                cout << endl << gate->output.name << " changed from " << oldoutput << " to " << gate->output.state << endl;
+                for (int i = 0; i < gates.size(); i++)
+                {
+                    for (int j = 0; j < gates[i].inputs.size(); j++)
+                    {
+                        if (gates[i].inputs[j].name == gate->output.name)
+                        {
+                            //cout << "common wire: " << input.name;
+                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            gates[i].inputs[j].state = gate->output.state;
+
+                            assignGateInputsAndGenerateOutput(&gates[i]);
+                        }
+                    }
+                }
+            }
         }
         else {
             cerr << "Unsupported gate type: " << gate->type << endl;
         }
-        
-        cout << "Gate Type: " << gate->type << ", Output: " << gate->output.name
-            << ", State: " << gate->output.state << endl;
-        return gate->output.state == oldoutput;
+        /*
+        cout << endl << "gate with inputs:";
+        for (auto input : gate->inputs)
+        {
+            cout << input.name;
+        }
+        cout << " from " << oldoutput << " to " << gate->output.state;
+        */
+
     }
     ///------------------------------------------  Method to update the inputs according to the events ---------------------------------------------------------------
     void UpdateInput() {
@@ -161,51 +368,35 @@ struct Circuit {
         // Get the top event
         Event current_event = event_queue.top();
 
-        // Check if the event has timestamp 0
-        while (!event_queue.empty() && current_event.timestamp == 0) {
-            event_queue.pop(); // Remove the processed event
-            
-            //Update corresponding inputs
-            ioput current_input = current_event.input;
-            for (auto& input : inputs) {
-                if (input.name == current_input.name) {
-                    input.state = current_input.state;
+
+        cout << endl << "Timestamp: " << current_event.timestamp
+            << ", Input: " << current_event.input.name
+            << ", New Value: " << current_event.input.state << endl;
+        // Update corresponding inputs
+
+        ioput current_input = current_event.input;
+
+        for (auto& gate : gates) {
+            for (auto& gate_input : gate.inputs) {
+                if (gate_input.name == current_event.input.name) {
+
+                    gate_input.state = current_event.input.state;
+                    assignGateInputsAndGenerateOutput(&gate);
                 }
-            }
-            if (!event_queue.empty()) {
-                current_event = event_queue.top(); // Get the next event
             }
         }
 
-        // Process the next event if it's not zero
+
         if (!event_queue.empty()) {
             current_event = event_queue.top(); // Get the next event
-            last_event_timestamp = current_event.timestamp; // Store the last event timestamp
-
-            ioput current_input = current_event.input;
-            for (auto& input : inputs) { // Look for the corresponding input
-                if (input.name == (current_input.name + ",")) {
-                    input.state = current_input.state; // Input updated
-                    cout << "Timestamp: " << current_event.timestamp
-                         << ", Input: " << current_event.input.name
-                         << ", New Value: " << current_event.input.state << endl;
-                    WriteSimulationResults("simulation.sim", input, current_event.timestamp);
-                }
-            }
         }
-    }
 
-   
-    void process_change()
-    {
-        ioput current = changed_states.front();
-        changed_states.pop();
-        
-            assignGateInputsAndGenerateOutput(current.connected);
-            changed_states.push(current.connected->output);
-            process_change();
+
 
     }
+
+
+
     ///------------------------------------------  Method to read verilog file 
     void parseVerilogFile(const string& filename) {
         ifstream file(filename);
@@ -229,7 +420,7 @@ struct Circuit {
                 string output;
                 while (iss >> output) {
                     if (output.back() == ';') output.pop_back();  // Remove trailing semicolon
-                    if(output[0] == '(') output.erase(0,1);
+                    if (output[0] == '(') output.erase(0, 1);
                     outputs.push_back(ioput(output, 0));
                 }
             }
@@ -238,7 +429,7 @@ struct Circuit {
                 string wire;
                 while (iss >> wire) {
                     if (wire.back() == ';') wire.pop_back();  // Remove trailing semicolon
-                    if(wire[0] == '(') wire.erase(0,1);
+                    if (wire[0] == '(') wire.erase(0, 1);
                     wires.push_back(ioput(wire, 0));
                 }
             }
@@ -248,21 +439,46 @@ struct Circuit {
                 Gate gate;
                 gate.type = word;
                 string output, input;
+
                 iss >> output;
+                while (output == "(" or output == ")" or output == " ")
+                {
+                    iss >> output;
+                }
                 if (output.back() == ',') output.pop_back();  // Remove trailing comma
-                if(output[0] == '(') output.erase(0,1);
+                if (output[0] == '(') output.erase(0, 1);
+                removeCharacter(output, '(');
+                removeCharacter(output, ')');
+                removeCharacter(output, ' ');
                 gate.output.name = output;
+                cout << output << " is connected to gate as output of type: " << gate.type << endl;
                 gate.output.connected = &gate;
                 while (iss >> input) {
                     if (input.back() == ',' || input.back() == ';') input.pop_back(); // Remove trailing comma or semicolon
-                    
-                        ioput temp(input, 0);
-                        temp.connected = &gate;
+
+                    ioput temp(input, 0);
+                    temp.connected = &gate;
+                    removeCharacter(temp.name,'(');
+                    removeCharacter(temp.name, ')');
+                    removeCharacter(temp.name, ' ');
+                    if (temp.name != "(" && temp.name != ")" && temp.name != " ")
+                    {
                         gate.inputs.push_back(temp);
-                    
+                        cout << temp.name << " is connected to gate as input of type " << gate.type << endl;
+                    }
                 }
                 gates.push_back(gate);
             }
+        }
+
+        for (auto gate : gates)
+        {
+            //  cout << "gate type:" << gate.type << " inputs: ";
+            for (auto inputs : gate.inputs) {
+                cout << inputs.name << "  ";
+            }
+            // cout << "output: " << gate.output.name;
+            cout << endl;
         }
     }
 
@@ -270,10 +486,13 @@ struct Circuit {
     void ProcessEvent() {
         while (!event_queue.empty()) {
             UpdateInput();
-            //process_change();
+
+            // process_change();
+            /*
             for(auto gate: gates){
                 if(assignGateInputsAndGenerateOutput(&gate)) WriteSimulationResults("simulation.sim", gate.output, last_event_timestamp);
             }
+            */
             event_queue.pop();
         }
     }
@@ -289,6 +508,8 @@ struct Circuit {
         simFile << ts << ", " << updated_ioput.name << " " << updated_ioput.state << "\n";
         simFile.close();
     }
+
+
 };
 
 int main() {
