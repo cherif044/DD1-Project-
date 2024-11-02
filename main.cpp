@@ -29,7 +29,7 @@ struct ioput {
     vector<ioput> inputs;
 };
 
-//-------------------------------------------------------------------- Event struct type 
+//-------------------------------------------------------------------- Event struct type ------------------------------------------
 struct Event {
     long long timestamp; // In picostates
     ioput input;
@@ -43,7 +43,7 @@ struct Event {
     Event(ioput n, long long timestamp) : input(n), timestamp(timestamp) {}
 };
 
-//------------------------------------------------------------------ Circuit generated from verilog 
+//------------------------------------------------------------------ Circuit generated from verilog ------------------------------------------
 struct Circuit {
     vector<ioput> inputs;
     vector<ioput> outputs;
@@ -53,7 +53,7 @@ struct Circuit {
     queue<ioput> changed_states;
     long long last_event_timestamp; // Store the last event timestamp
 
-    //------------------------------------------ Queue of inputs to update (events) --
+    //------------------------------------------ Queue of inputs to update (events) --------------------------------------------
     void FillEventQueue(const string& filename) {
         ifstream file(filename);
         if (!file.is_open()) {
@@ -86,11 +86,11 @@ struct Circuit {
         file.close();
     }
 
-    void assignGateInputsAndGenerateOutput(Gate* gate) {
-        
+    bool assignGateInputsAndGenerateOutput(Gate* gate) {
+        int oldoutput = gate->output.state;
 
         // Generate output based on the gate type
-        if (gate->type == "AND") {
+        if (gate->type == "and") {
             gate->output.state = 1; // Start assuming true
             for (const auto& input : gate->inputs) {
                 if (input.state == 0) { // If any input is false
@@ -99,7 +99,7 @@ struct Circuit {
                 }
             }
         }
-        else if (gate->type == "OR") {
+        else if (gate->type == "or") {
             gate->output.state = 0; // Start assuming false
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) { // If any input is true
@@ -108,7 +108,7 @@ struct Circuit {
                 }
             }
         }
-        else if (gate->type == "NOT") {
+        else if (gate->type == "not") {
             if (gate->inputs.size() == 1) {
                 gate->output.state = !gate->inputs[0].state; // Invert the single input
             }
@@ -116,7 +116,7 @@ struct Circuit {
                 cerr << "NOT gate should have exactly one input." << endl;
             }
         }
-        else if (gate->type == "NAND") {
+        else if (gate->type == "nand") {
             gate->output.state = 1; // Start assuming true
             for (const auto& input : gate->inputs) {
                 if (input.state == 0) {
@@ -126,7 +126,7 @@ struct Circuit {
                 gate->output.state = 0; // If all inputs are true, output is false
             }
         }
-        else if (gate->type == "NOR") {
+        else if (gate->type == "nor") {
             gate->output.state = 0;
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) {
@@ -136,7 +136,7 @@ struct Circuit {
                 gate->output.state = 1; // If all inputs are false, output is true
             }
         }
-        else if (gate->type == "XOR") {
+        else if (gate->type == "xor") {
             int trueCount = 0;
             for (const auto& input : gate->inputs) {
                 if (input.state == 1) trueCount++;
@@ -146,9 +146,10 @@ struct Circuit {
         else {
             cerr << "Unsupported gate type: " << gate->type << endl;
         }
-
+        
         cout << "Gate Type: " << gate->type << ", Output: " << gate->output.name
             << ", State: " << gate->output.state << endl;
+        return gate->output.state == oldoutput;
     }
     ///------------------------------------------  Method to update the inputs according to the events ---------------------------------------------------------------
     void UpdateInput() {
@@ -181,8 +182,9 @@ struct Circuit {
 
         // Process the next event if it's not zero
         if (!event_queue.empty()) {
-            current_event = event_queue.top(); // Get the next event
             last_event_timestamp = current_event.timestamp; // Store the last event timestamp
+            while(last_event_timestamp == current_event.timestamp){
+            current_event = event_queue.top(); // Get the next event
 
             ioput current_input = current_event.input;
             for (auto& input : inputs) { // Look for the corresponding input
@@ -194,18 +196,21 @@ struct Circuit {
                     WriteSimulationResults("simulation.sim", input, current_event.timestamp);
                 }
             }
+            event_queue.pop();
+            current_event = event_queue.top();
+            }
+            
         }
     }
 
    
     void process_change()
     {
-        ioput current = changed_states.pop();
-
+        ioput current = changed_states.front();
+        changed_states.pop();
         
             assignGateInputsAndGenerateOutput(current.connected);
             changed_states.push(current.connected->output);
-
             process_change();
 
     }
@@ -232,6 +237,7 @@ struct Circuit {
                 string output;
                 while (iss >> output) {
                     if (output.back() == ';') output.pop_back();  // Remove trailing semicolon
+                    if(output[0] == '(') output.erase(0,1);
                     outputs.push_back(ioput(output, 0));
                 }
             }
@@ -240,6 +246,7 @@ struct Circuit {
                 string wire;
                 while (iss >> wire) {
                     if (wire.back() == ';') wire.pop_back();  // Remove trailing semicolon
+                    if(wire[0] == '(') wire.erase(0,1);
                     wires.push_back(ioput(wire, 0));
                 }
             }
@@ -251,6 +258,7 @@ struct Circuit {
                 string output, input;
                 iss >> output;
                 if (output.back() == ',') output.pop_back();  // Remove trailing comma
+                if(output[0] == '(') output.erase(0,1);
                 gate.output.name = output;
                 gate.output.connected = &gate;
                 while (iss >> input) {
@@ -266,16 +274,19 @@ struct Circuit {
         }
     }
 
-    ///------------------------------------------  Method to update input, then output(s), then pop event
+    ///------------------------------------------  Method to update input, then output(s), then pop event ------------------------------------------------------------------------------------
     void ProcessEvent() {
         while (!event_queue.empty()) {
             UpdateInput();
-            process_change();
+            // process_change();
+            for(auto gate: gates){
+                if(assignGateInputsAndGenerateOutput(&gate)) WriteSimulationResults("simulation.sim", gate.output, last_event_timestamp);
+            }
             event_queue.pop();
         }
     }
 
-    ///------------------------------------------ method to write simulation result
+    ///------------------------------------------ method to write simulation result ------------------------------------------------------------------------------------
     void WriteSimulationResults(const string& filename, ioput updated_ioput, long long ts) {
         ofstream simFile(filename, ios::app);
         if (!simFile.is_open()) {
@@ -291,8 +302,7 @@ struct Circuit {
 int main() {
     Circuit circuit;
     circuit.parseVerilogFile("circuit.v");
-
-    // Print parsed data
+    /// Print parsed data
     cout << "Inputs: ";
     for (const auto& input : circuit.inputs) cout << input.name << " ";
     cout << "\nOutputs: ";
@@ -301,13 +311,12 @@ int main() {
     for (const auto& wire : circuit.wires) cout << wire.name << " ";
     cout << "\nGates:\n";
     for (const auto& gate : circuit.gates) {
-        cout << gate.type << " " << gate.output.name << " (";
+        cout << gate.type << " " << gate.output.name << " ";
         for (const auto& input : gate.inputs) cout << input.name << " ";
-        cout << ")\n";
+        cout << "\n";
     }
 
     circuit.FillEventQueue("stimulicircuit1.stim");
     circuit.ProcessEvent();
-
     return 0;
 }
