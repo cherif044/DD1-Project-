@@ -94,9 +94,8 @@ struct Circuit {
         file.close();
     }
 
-    void assignGateInputsAndGenerateOutput(Gate* gate) {
+    bool assignGateInputsAndGenerateOutput(Gate* gate) {
         int oldoutput = gate->output.state;
-        // cout << "accessing: " << gate->type;
 
          // Generate output based on the gate type
         if (gate->type == "and") {
@@ -118,7 +117,6 @@ struct Circuit {
                     {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
-                            //cout << "common wire: " << input.name;
                             cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
@@ -348,14 +346,12 @@ struct Circuit {
         else {
             cerr << "Unsupported gate type: " << gate->type << endl;
         }
-        /*
-        cout << endl << "gate with inputs:";
-        for (auto input : gate->inputs)
-        {
-            cout << input.name;
-        }
-        cout << " from " << oldoutput << " to " << gate->output.state;
-        */
+        
+                Event current_event = event_queue.top();
+
+        WriteSimulationResults("simulation.sim", gate->output, current_event.timestamp + 100);
+
+        return true;
 
     }
     ///------------------------------------------  Method to update the inputs according to the events ---------------------------------------------------------------
@@ -367,13 +363,15 @@ struct Circuit {
 
         // Get the top event
         Event current_event = event_queue.top();
-
-        cout << endl << endl << endl << endl << endl << endl << endl;
+    if(current_event.timestamp != 0){
+        cout << endl << endl << endl ;
         cout << endl << "Timestamp: " << current_event.timestamp
             << ", Input: " << current_event.input.name
             << ", New Value: " << current_event.input.state << endl;
         // Update corresponding inputs
+        WriteSimulationResults("simulation.sim", current_event.input, current_event.timestamp);
 
+}  
         ioput current_input = current_event.input;
 
         for (auto& gate : gates) {
@@ -486,17 +484,9 @@ struct Circuit {
     void ProcessEvent() {
         while (!event_queue.empty()) {
             UpdateInput();
-
-            // process_change();
-            /*
-            for(auto gate: gates){
-                if(assignGateInputsAndGenerateOutput(&gate)) WriteSimulationResults("simulation.sim", gate.output, last_event_timestamp);
-            }
-            */
             event_queue.pop();
         }
     }
-
     ///------------------------------------------ method to write simulation result ------------------------------------------------------------------------------------
     void WriteSimulationResults(const string& filename, ioput updated_ioput, long long ts) {
         ofstream simFile(filename, ios::app);
