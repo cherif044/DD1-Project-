@@ -161,45 +161,37 @@ struct Circuit {
         // Get the top event
         Event current_event = event_queue.top();
 
-       
-
-            // Update corresponding inputs
+        // Check if the event has timestamp 0
+        while (!event_queue.empty() && current_event.timestamp == 0) {
+            event_queue.pop(); // Remove the processed event
+            
+            //Update corresponding inputs
             ioput current_input = current_event.input;
             for (auto& input : inputs) {
                 if (input.name == current_input.name) {
                     input.state = current_input.state;
-                    changed_states.push(input);
                 }
             }
-            cout << "Timestamp: " << current_event.timestamp
-                << ", Input: " << current_event.input.name
-                << ", New Value: " << current_event.input.state << endl;
-
             if (!event_queue.empty()) {
                 current_event = event_queue.top(); // Get the next event
             }
-        
+        }
 
         // Process the next event if it's not zero
         if (!event_queue.empty()) {
-            last_event_timestamp = current_event.timestamp; // Store the last event timestamp
-            while(last_event_timestamp == current_event.timestamp){
             current_event = event_queue.top(); // Get the next event
+            last_event_timestamp = current_event.timestamp; // Store the last event timestamp
 
             ioput current_input = current_event.input;
             for (auto& input : inputs) { // Look for the corresponding input
                 if (input.name == (current_input.name + ",")) {
                     input.state = current_input.state; // Input updated
                     cout << "Timestamp: " << current_event.timestamp
-                        << ", Input: " << current_event.input.name
-                        << ", New Value: " << current_event.input.state << endl;
+                         << ", Input: " << current_event.input.name
+                         << ", New Value: " << current_event.input.state << endl;
                     WriteSimulationResults("simulation.sim", input, current_event.timestamp);
                 }
             }
-            event_queue.pop();
-            current_event = event_queue.top();
-            }
-            
         }
     }
 
@@ -278,7 +270,7 @@ struct Circuit {
     void ProcessEvent() {
         while (!event_queue.empty()) {
             UpdateInput();
-            // process_change();
+            //process_change();
             for(auto gate: gates){
                 if(assignGateInputsAndGenerateOutput(&gate)) WriteSimulationResults("simulation.sim", gate.output, last_event_timestamp);
             }
