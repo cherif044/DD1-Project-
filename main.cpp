@@ -119,7 +119,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -148,7 +148,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -186,7 +186,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -237,7 +237,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -299,7 +299,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input " << gate->output.name << " of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -336,7 +336,7 @@ struct Circuit {
                         if (gates[i].inputs[j].name == gate->output.name)
                         {
                             //cout << "common wire: " << input.name;
-                            cout << " as a result of the change, the input of the Gate with the output: " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
+                            cout << " as a result of the change, the input "<<gate->output.name<<" of the Gate with the output : " << gates[i].output.name << " has been changed from " << gates[i].inputs[j].state << " to " << gate->output.state;
                             gates[i].inputs[j].state = gate->output.state;
 
                             assignGateInputsAndGenerateOutput(&gates[i]);
@@ -368,7 +368,7 @@ struct Circuit {
         // Get the top event
         Event current_event = event_queue.top();
 
-
+        cout << endl << endl << endl << endl << endl << endl << endl;
         cout << endl << "Timestamp: " << current_event.timestamp
             << ", Input: " << current_event.input.name
             << ", New Value: " << current_event.input.state << endl;
